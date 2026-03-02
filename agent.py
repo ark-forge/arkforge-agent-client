@@ -122,13 +122,22 @@ def _pay_provider_direct() -> dict:
 
     stripe_lib.api_key = secret_key
 
-    pi = stripe_lib.PaymentIntent.create(
+    # If the PaymentMethod belongs to a Customer, Stripe requires the customer
+    # parameter on the PaymentIntent. Retrieve it automatically.
+    pm_obj = stripe_lib.PaymentMethod.retrieve(payment_method)
+    customer_id = pm_obj.get("customer")
+
+    create_kwargs = dict(
         amount=amount,
         currency="eur",
         payment_method=payment_method,
         confirm=True,
         off_session=True,
     )
+    if customer_id:
+        create_kwargs["customer"] = customer_id
+
+    pi = stripe_lib.PaymentIntent.create(**create_kwargs)
 
     receipt_url = ""
     charge_id = pi.get("latest_charge")
