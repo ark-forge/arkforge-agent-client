@@ -58,11 +58,11 @@ log = logging.getLogger("arkforge-agent")
 # ---------------------------------------------------------------------------
 
 def _get_base_url() -> str:
-    return os.environ.get("TRUST_LAYER_BASE", "https://arkforge.fr/trust")
+    return os.environ.get("TRUST_LAYER_BASE", "https://arkforge.tech/trust")
 
 
 def _get_scan_target() -> str:
-    return os.environ.get("SCAN_API_TARGET", "https://arkforge.fr/api/v1/scan-repo")
+    return os.environ.get("SCAN_API_TARGET", "https://arkforge.tech/api/v1/scan-repo")
 
 
 def _get_api_key() -> str:
