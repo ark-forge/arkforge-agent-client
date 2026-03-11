@@ -1,7 +1,7 @@
 {
   "proof_id": "prf_20260225_210632_d5843c",
-  "verification_url": "https://arkforge.fr/trust/v1/proof/prf_20260225_210632_d5843c",
-  "verification_algorithm": "https://arkforge.fr/trust/docs/verification",
+  "verification_url": "https://arkforge.tech/trust/v1/proof/prf_20260225_210632_d5843c",
+  "verification_algorithm": "https://arkforge.tech/trust/docs/verification",
   "hashes": {
     "request": "sha256:748fd4d9e101f342f61163f317ba0a045297b41618dd47f91436e22fecdc23cf",
     "response": "sha256:9027c3a35c8178e089dc9476a66de5b35d6ace779c1e293bd14e1f5b75282f93",
@@ -24,7 +24,7 @@
   "timestamp": "2026-02-25T21:06:21Z",
   "opentimestamps": {
     "status": "pending",
-    "ots_url": "https://arkforge.fr/trust/v1/proof/prf_20260225_210632_d5843c/ots"
+    "ots_url": "https://arkforge.tech/trust/v1/proof/prf_20260225_210632_d5843c/ots"
   },
   "identity_consistent": null
 }

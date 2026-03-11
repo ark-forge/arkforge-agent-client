@@ -48,7 +48,7 @@ def _proof_body(proof_id: str = "prf_test_001") -> dict:
             },
             "timestamp": "2026-03-03T12:00:00+00:00",
             "arkforge_signature": "ed25519:signaturehere",
-            "verification_url": f"https://arkforge.fr/trust/v1/proof/{proof_id}",
+            "verification_url": f"https://trust.arkforge.tech/v1/proof/{proof_id}",
         },
         "service_response": {"status_code": 200, "body": {}},
     }

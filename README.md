@@ -16,7 +16,7 @@ One agent (this client) calls another agent (the [ArkForge MCP EU AI Act](https:
 **Free plan** — no card required:
 
 ```bash
-curl -X POST https://arkforge.fr/trust/v1/keys/free-signup \
+curl -X POST https://trust.arkforge.tech/v1/keys/free-signup \
   -H "Content-Type: application/json" \
   -d '{"email": "your@email.com"}'
 ```
@@ -35,7 +35,7 @@ python3 setup_card.py your@email.com           # Live mode (real charges)
 **Option B — via curl:**
 
 ```bash
-curl -X POST https://arkforge.fr/trust/v1/keys/setup \
+curl -X POST https://trust.arkforge.tech/v1/keys/setup \
   -H "Content-Type: application/json" \
   -d '{"email": "your@email.com", "mode": "test", "amount": 10}'
 ```
@@ -57,7 +57,7 @@ python3 agent.py credits 10    # Buy 10 EUR = 100 proofs — receipt auto-saved
 **Via curl:**
 
 ```bash
-curl -X POST https://arkforge.fr/trust/v1/credits/buy \
+curl -X POST https://trust.arkforge.tech/v1/credits/buy \
   -H "Content-Type: application/json" \
   -H "X-Api-Key: mcp_pro_..." \
   -d '{"amount": 10}'
@@ -182,8 +182,8 @@ EU AI ACT COMPLIANCE SCAN — via Trust Layer
 Timestamp:   2026-02-25T17:17:12.560154+00:00
 Target:      https://github.com/openai/openai-quickstart-python
 Price:       0.10 EUR (from prepaid credits)
-Trust Layer: https://arkforge.fr/trust/v1/proxy
-Scan API:    https://arkforge.fr/api/v1/scan-repo
+Trust Layer: https://trust.arkforge.tech/v1/proxy
+Scan API:    https://arkforge.tech/api/v1/scan-repo
 API Key:     mcp_te...
 
 [PAYMENT]
@@ -202,8 +202,8 @@ API Key:     mcp_te...
   Chain Hash:   sha256:5319f160352fea2c1889cf6dcbb9d1b431...
   Request Hash: sha256:0b801bccb76376504cb2c5f92c55cd7cfd...
   Signature:    ed25519:T3hY8k...(verified)
-  Verify URL:   https://arkforge.fr/trust/v1/proof/prf_20260225_171714_4ebb28
-  Share URL:    https://arkforge.fr/trust/v/prf_20260225_171714_4ebb28
+  Verify URL:   https://trust.arkforge.tech/v1/proof/prf_20260225_171714_4ebb28
+  Share URL:    https://arkforge.tech/trust/v/prf_20260225_171714_4ebb28
   Timestamp:    2026-02-25T17:17:12Z
   Upstream:     Wed, 25 Feb 2026 17:17:13 GMT
   TSA:          pending
@@ -215,7 +215,7 @@ API Key:     mcp_te...
 [RESPONSE HEADERS — Ghost Stamp]
   X-ArkForge-Verified: true
   X-ArkForge-Proof-ID: prf_20260225_171714_4ebb28
-  X-ArkForge-Trust-Link: https://arkforge.fr/trust/v/prf_20260225_171714_4ebb28
+  X-ArkForge-Trust-Link: https://arkforge.tech/trust/v/prf_20260225_171714_4ebb28
 
 [SAVED] logs/scan_20260225_171715.json
 ============================================================
@@ -339,7 +339,7 @@ Every transaction carries the ArkForge mark at 3 levels:
 | **2 — Ghost Stamp** | HTTP response headers | Infra / monitoring | `X-ArkForge-Verified`, `X-ArkForge-Proof-ID`, `X-ArkForge-Trust-Link` |
 | **3 — Visual Stamp** | HTML proof page | Humans / legal | Colored badge (green/orange/red), full proof details |
 
-Open any proof in a browser: `https://arkforge.fr/trust/v/prf_...` — the short URL redirects to a self-contained HTML page with all verification details.
+Open any proof in a browser: `https://arkforge.tech/trust/v/prf_...` — the short URL redirects to a self-contained HTML page with all verification details.
 
 ## Transparency Notice
 
@@ -396,8 +396,8 @@ Both this agent (buyer) and the ArkForge scan API (seller) are built and control
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `TRUST_LAYER_API_KEY` | — | API key (required) |
-| `TRUST_LAYER_BASE` | `https://arkforge.fr/trust` | Trust Layer URL |
-| `SCAN_API_TARGET` | `https://arkforge.fr/api/v1/scan-repo` | Upstream scan endpoint |
+| `TRUST_LAYER_BASE` | `https://trust.arkforge.tech` | Trust Layer URL |
+| `SCAN_API_TARGET` | `https://arkforge.tech/api/v1/scan-repo` | Upstream scan endpoint |
 | `STRIPE_SECRET_KEY` | — | Agent's Stripe secret key (`sk_test_…` / `sk_live_…`) — Mode B only |
 | `STRIPE_PAYMENT_METHOD` | — | Saved Stripe payment method ID (`pm_…`) — Mode B only |
 | `SCAN_PROVIDER_PRICE` | `100` | Provider payment amount in cents EUR (100 = 1.00 EUR) — Mode B only |

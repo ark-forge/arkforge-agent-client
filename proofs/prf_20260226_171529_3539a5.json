@@ -1,6 +1,6 @@
 {
   "proof_id": "prf_20260226_171529_3539a5",
-  "verification_url": "https://arkforge.fr/trust/v1/proof/prf_20260226_171529_3539a5",
+  "verification_url": "https://arkforge.tech/trust/v1/proof/prf_20260226_171529_3539a5",
   "verification_algorithm": "https://github.com/ark-forge/proof-spec/blob/main/SPEC.md#2-chain-hash-algorithm",
   "hashes": {
     "request": "sha256:0b801bccb76376504cb2c5f92c55cd7cfd2a6148ba15270cc6257f49585735c0",
@@ -25,7 +25,7 @@
   "timestamp_authority": {
     "status": "submitted",
     "provider": "freetsa.org",
-    "tsr_url": "https://arkforge.fr/trust/v1/proof/prf_20260226_171529_3539a5/tsr"
+    "tsr_url": "https://arkforge.tech/trust/v1/proof/prf_20260226_171529_3539a5/tsr"
   },
   "identity_consistent": null
 }

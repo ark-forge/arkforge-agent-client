@@ -15,6 +15,6 @@
     "created_timestamp": "2026-02-25T09:01:37+00:00"
   },
   "payment_link_used": "https://buy.stripe.com/eVqcMYeJGbn64qI3A44AU0b",
-  "endpoint_tested": "https://arkforge.fr/agent-pay",
+  "endpoint_tested": "https://arkforge.tech/agent-pay",
   "transparency": "Both agents (client and service) are built and controlled by ArkForge. The buyer card belongs to a third party. This is a proof-of-concept for autonomous agent-to-agent paid transactions."
 }
