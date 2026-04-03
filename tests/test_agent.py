@@ -232,6 +232,92 @@ class TestBuyCredits:
 # CLI argument helpers
 # ---------------------------------------------------------------------------
 
+class TestComplianceReport:
+
+    def _report_body(self, framework: str = "eu_ai_act") -> dict:
+        return {
+            "report_id": "rpt_20260403_120000_abc123",
+            "framework": framework,
+            "framework_version": "1.0",
+            "date_range": {"from": "2026-01-01T00:00:00+00:00", "to": "2026-03-31T00:00:00+00:00"},
+            "proof_count": 5,
+            "articles": [
+                {"article": "Art. 9" if framework == "eu_ai_act" else "§ 6.1",
+                 "title": "Risk Management System" if framework == "eu_ai_act" else "Risk and Opportunity Management",
+                 "status": "covered", "evidence": "Chain hash present", "proof_count": 5},
+            ],
+            "gaps": [],
+            "summary": {"covered": 5, "partial": 0, "gap": 0, "not_applicable": 1},
+        }
+
+    def test_compliance_eu_ai_act_success(self, monkeypatch):
+        monkeypatch.setenv("TRUST_LAYER_API_KEY", "mcp_test_key")
+        body = self._report_body("eu_ai_act")
+        with patch("requests.post", return_value=_mock_response(200, body)):
+            result = agent.compliance_report("2026-01-01", "2026-03-31", framework="eu_ai_act")
+        assert result["framework"] == "eu_ai_act"
+        assert result["report_id"].startswith("rpt_")
+        assert "articles" in result
+
+    def test_compliance_iso_42001_success(self, monkeypatch):
+        monkeypatch.setenv("TRUST_LAYER_API_KEY", "mcp_test_key")
+        body = self._report_body("iso_42001")
+        with patch("requests.post", return_value=_mock_response(200, body)):
+            result = agent.compliance_report("2026-01-01", "2026-03-31", framework="iso_42001")
+        assert result["framework"] == "iso_42001"
+        assert result["proof_count"] == 5
+
+    def test_compliance_default_framework_is_eu_ai_act(self, monkeypatch):
+        monkeypatch.setenv("TRUST_LAYER_API_KEY", "mcp_test_key")
+        captured = {}
+
+        def mock_post(url, headers=None, json=None, timeout=None):
+            captured["body"] = json
+            return _mock_response(200, self._report_body("eu_ai_act"))
+
+        with patch("requests.post", side_effect=mock_post):
+            agent.compliance_report("2026-01-01", "2026-03-31")
+
+        assert captured["body"]["framework"] == "eu_ai_act"
+
+    def test_compliance_framework_passed_to_server(self, monkeypatch):
+        monkeypatch.setenv("TRUST_LAYER_API_KEY", "mcp_test_key")
+        captured = {}
+
+        def mock_post(url, headers=None, json=None, timeout=None):
+            captured["body"] = json
+            return _mock_response(200, self._report_body("iso_42001"))
+
+        with patch("requests.post", side_effect=mock_post):
+            agent.compliance_report("2026-01-01", "2026-03-31", framework="iso_42001")
+
+        assert captured["body"]["framework"] == "iso_42001"
+        assert captured["body"]["date_from"] == "2026-01-01"
+        assert captured["body"]["date_to"] == "2026-03-31"
+
+    def test_compliance_no_api_key(self, monkeypatch):
+        monkeypatch.delenv("TRUST_LAYER_API_KEY", raising=False)
+        monkeypatch.delenv("ARKFORGE_SCAN_API_KEY", raising=False)
+        result = agent.compliance_report("2026-01-01", "2026-03-31")
+        assert "error" in result
+        assert "TRUST_LAYER_API_KEY" in result["error"]
+
+    def test_compliance_unknown_framework_error(self, monkeypatch):
+        monkeypatch.setenv("TRUST_LAYER_API_KEY", "mcp_test_key")
+        body = {"error": {"code": "unknown_framework",
+                          "message": "Unknown framework 'bad_fw'. Available: eu_ai_act, iso_42001",
+                          "status": 400}}
+        with patch("requests.post", return_value=_mock_response(400, body)):
+            result = agent.compliance_report("2026-01-01", "2026-03-31", framework="bad_fw")
+        assert "error" in result
+
+    def test_compliance_server_error(self, monkeypatch):
+        monkeypatch.setenv("TRUST_LAYER_API_KEY", "mcp_test_key")
+        with patch("requests.post", return_value=_mock_response(500, {"error": "internal"})):
+            result = agent.compliance_report("2026-01-01", "2026-03-31")
+        assert "error" in result
+
+
 class TestExtractReceiptUrl:
 
     def test_extract_flag(self):

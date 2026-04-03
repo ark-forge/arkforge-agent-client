@@ -14,7 +14,7 @@ Commands:
   dispute <proof_id> "reason" — File a dispute against a proof
   disputes <agent_id>        — View dispute history for an agent
   assess <server_id>         — Assess MCP server security posture
-  compliance                 — Generate EU AI Act compliance report
+  compliance                 — Generate a compliance report (eu_ai_act, iso_42001, ...)
 
 Mode B — Payment evidence (external provider payment):
   To attach a payment proof to a certification, pass the Stripe receipt URL
@@ -387,7 +387,9 @@ def compliance_report(
     Args:
         date_from: ISO 8601 start date (e.g. "2026-01-01" or "2026-01-01T00:00:00Z").
         date_to:   ISO 8601 end date (e.g. "2026-12-31").
-        framework: Compliance framework name. Currently supported: "eu_ai_act".
+        framework: Compliance framework identifier. Supported: "eu_ai_act", "iso_42001".
+                   The server returns the list of available frameworks in the
+                   error message if an unknown value is passed.
 
     Returns:
         dict with: report_id, framework, framework_version, date_range,
@@ -895,7 +897,7 @@ def _print_assessment(result: dict):
 
 
 def _print_compliance_report(result: dict):
-    """Print EU AI Act compliance report."""
+    """Print compliance report (any framework)."""
     summary = result.get("summary", {})
     covered = summary.get("covered", 0)
     partial = summary.get("partial", 0)
@@ -913,7 +915,7 @@ def _print_compliance_report(result: dict):
     if result.get("coverage_since"):
         print(f"  Coverage since: {result['coverage_since']}")
     print()
-    print(f"  Summary ({total_articles} articles):")
+    print(f"  Summary ({total_articles} clauses/articles):")
     print(f"    Covered:        {covered}")
     print(f"    Partial:        {partial}")
     print(f"    Gap:            {gap}")
@@ -1148,8 +1150,9 @@ def main():
         print("  python3 agent.py assess <server_id> --server-url https://mcp.example.com [--version 1.0.0]")
         print("  python3 agent.py assess <server_id> --tools-file manifest.json [--version 1.0.0]")
         print("  python3 agent.py assess <server_id> --demo   # Assess MCP server (demo manifest)")
-        print("  python3 agent.py compliance                  # EU AI Act report (last 30 days)")
-        print("  python3 agent.py compliance --from 2026-01-01 --to 2026-12-31 [--framework eu_ai_act]")
+        print("  python3 agent.py compliance                  # Compliance report (last 30 days, eu_ai_act)")
+        print("  python3 agent.py compliance --from 2026-01-01 --to 2026-12-31 --framework eu_ai_act")
+        print("  python3 agent.py compliance --from 2026-01-01 --to 2026-12-31 --framework iso_42001")
         print()
         print("Mode B — payment evidence:")
         print("  --receipt-url URL   Direct provider payment receipt (manual)")

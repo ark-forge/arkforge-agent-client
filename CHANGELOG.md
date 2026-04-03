@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.9.2] - 2026-04-03
+
+### Added
+- `compliance --framework iso_42001` — ISO/IEC 42001:2023 AI Management System report,
+  in addition to the existing `eu_ai_act` default.
+- 7 new tests for `compliance_report()` — both frameworks, default value, framework
+  passed through to server, no API key, unknown framework, server error.
+
+### Changed
+- `compliance_report()` docstring updated: lists `eu_ai_act` and `iso_42001` as supported frameworks.
+- CLI usage text: `compliance` command now shows both framework options.
+- `_print_compliance_report()`: "articles" → "clauses/articles" (framework-agnostic).
+
+---
+
 ## [1.9.1] - 2026-04-03
 
 ### Added
