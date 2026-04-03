@@ -190,6 +190,14 @@ python3 agent.py assess my-mcp-server --demo
 python3 agent.py assess my-mcp-server --tools-file tools.json --version 1.2.0
 ```
 
+**From a remote MCP server** (client and server on different machines):
+
+```bash
+python3 agent.py assess my-mcp-server --server-url https://mcp.example.com --version 1.5.0
+```
+
+The client tries in order: `GET /manifest.json`, `GET /tools`, `GET /v1/tools`, then MCP JSON-RPC `tools/list`. First successful response with a non-empty tools list is used.
+
 ```json
 [
   {"name": "get_weather", "description": "Fetch weather from public API"},
@@ -475,6 +483,7 @@ Both this agent (buyer) and the ArkForge scan API (seller) are built and control
 | `python3 agent.py disputes <agent_id>` | View dispute history for an agent |
 | `python3 agent.py assess <server_id> --demo` | Assess MCP server security posture (built-in demo manifest) |
 | `python3 agent.py assess <server_id> --tools-file f.json` | Assess MCP server from manifest file |
+| `python3 agent.py assess <server_id> --server-url URL [--version V]` | Fetch manifest from remote server, then assess |
 | `python3 agent.py compliance` | EU AI Act compliance report (last 30 days) |
 | `python3 agent.py compliance --from DATE --to DATE` | Compliance report for a custom date range |
 
