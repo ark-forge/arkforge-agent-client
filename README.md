@@ -173,6 +173,100 @@ DISPUTE HISTORY
 ============================================================
 ```
 
+### 9. Assess an MCP server
+
+Analyze an MCP server manifest for security risks: dangerous capabilities, tool drift since the last call, version changes.
+
+**Quick demo** (built-in manifest with intentionally dangerous tools):
+
+```bash
+python3 agent.py assess my-mcp-server --demo
+```
+
+**From a manifest file:**
+
+```bash
+# tools.json — list of tool objects (name + description minimum)
+python3 agent.py assess my-mcp-server --tools-file tools.json --version 1.2.0
+```
+
+```json
+[
+  {"name": "get_weather", "description": "Fetch weather from public API"},
+  {"name": "read_file",   "description": "Read any file from the local filesystem"},
+  {"name": "exec_shell",  "description": "Execute a shell command"}
+]
+```
+
+**Example output:**
+
+```
+============================================================
+MCP SECURITY ASSESSMENT — my-mcp-server
+============================================================
+  Assessment ID:  asr_20260403_121500_a1b2c3
+  Assessed at:    2026-04-03T12:15:00Z
+  Risk score:     75/100  [HIGH]
+  Baseline:       updated
+  Drift detected: YES
+  Drift summary:  1 tool added: exec_shell
+
+  Findings (3 total):
+    [CRITICAL] exec_shell: Tool description matches code execution pattern
+    [HIGH] read_file: Tool description matches filesystem read pattern
+    [MEDIUM] get_weather: network_access pattern detected
+============================================================
+```
+
+Call the same server twice to see drift detection in action — the second call compares against the baseline saved by the first.
+
+Rate limit: 100 assessments/day per API key. No credits consumed.
+
+### 10. Generate a compliance report
+
+Aggregate all proofs certified under your API key over a date range and map them to EU AI Act articles.
+
+```bash
+# Last 30 days (default)
+python3 agent.py compliance
+
+# Custom range
+python3 agent.py compliance --from 2026-01-01 --to 2026-12-31
+```
+
+**Example output:**
+
+```
+============================================================
+COMPLIANCE REPORT — EU_AI_ACT
+============================================================
+  Report ID:      rpt_20260403_122000_d4e5f6
+  Framework:      eu_ai_act v1.0
+  Date range:     2026-01-01 → 2026-04-03
+  Proofs analyzed:47
+
+  Summary (6 articles):
+    Covered:        3
+    Partial:        2
+    Gap:            0
+    Not applicable: 1
+
+  Article coverage:
+    [OK] Art. 9 — Risk Management Systems: covered
+    [NA] Art. 10 — Data and Data Governance: not applicable
+    [OK] Art. 13 — Transparency and Provision of Information: covered
+    [~~] Art. 14 — Human Oversight: partial
+         agent_identity_verified not set on all proofs
+    [OK] Art. 17 — Quality Management System: covered
+    [~~] Art. 22 — Record-Keeping: partial
+         47 proofs found; extend date range for full coverage
+
+  No gaps identified.
+============================================================
+```
+
+Requires proofs created after Trust Layer v1.3.18 (or a backfill run). No credits consumed.
+
 ### Example scan output
 
 ```
@@ -256,7 +350,10 @@ The proof is emitted with `spec_version: 2.0` and includes `receipt_content_hash
 `agent.py` can be imported as a Python module:
 
 ```python
-from agent import scan_repo, verify_proof, get_reputation, file_dispute, get_disputes
+from agent import (
+    scan_repo, verify_proof, get_reputation, file_dispute, get_disputes,
+    assess_mcp, compliance_report,
+)
 
 # All functions return dicts — check for "error" key on failure
 result = scan_repo("https://github.com/owner/repo")
@@ -376,6 +473,10 @@ Both this agent (buyer) and the ArkForge scan API (seller) are built and control
 | `python3 agent.py reputation <agent_id>` | Check agent reputation score (0-100) |
 | `python3 agent.py dispute <proof_id> "reason"` | File a dispute against a proof |
 | `python3 agent.py disputes <agent_id>` | View dispute history for an agent |
+| `python3 agent.py assess <server_id> --demo` | Assess MCP server security posture (built-in demo manifest) |
+| `python3 agent.py assess <server_id> --tools-file f.json` | Assess MCP server from manifest file |
+| `python3 agent.py compliance` | EU AI Act compliance report (last 30 days) |
+| `python3 agent.py compliance --from DATE --to DATE` | Compliance report for a custom date range |
 
 ## Plans
 
@@ -406,7 +507,7 @@ Both this agent (buyer) and the ArkForge scan API (seller) are built and control
 
 ```
 arkforge-agent-client/
-  agent.py               # CLI + importable library (7 commands)
+  agent.py               # CLI + importable library (9 commands)
   setup_card.py          # One-time: buy initial credits + save card via Stripe Checkout
   requirements.txt       # requests + stripe (optional for --pay-provider)
   .last_receipt.json     # Auto-saved Stripe receipt URL (gitignored)

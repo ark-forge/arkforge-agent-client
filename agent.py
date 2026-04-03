@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-EU AI Act Compliance Agent — Autonomous Scanner & Payer
+ArkForge Agent Client — Trust Layer CLI
 
-Routes ALL calls through ArkForge Trust Layer (certifying proxy).
+Routes API calls through ArkForge Trust Layer (certifying proxy).
 Every transaction gets a SHA-256 proof chain + RFC 3161 certified timestamp.
 
-Modes:
+Commands:
   scan <repo_url>            — Scan repo via Trust Layer (0.10 EUR/proof)
   pay                        — Payment proof only (0.10 EUR from credits)
   credits <amount>           — Buy prepaid credits (min 1 EUR, max 100 EUR)
@@ -13,6 +13,8 @@ Modes:
   reputation <agent_id>      — Check agent reputation (0-100)
   dispute <proof_id> "reason" — File a dispute against a proof
   disputes <agent_id>        — View dispute history for an agent
+  assess <server_id>         — Assess MCP server security posture
+  compliance                 — Generate EU AI Act compliance report
 
 Mode B — Payment evidence (external provider payment):
   To attach a payment proof to a certification, pass the Stripe receipt URL
@@ -38,13 +40,13 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
 
 AGENT_IDENTITY = "arkforge-agent-client"
-AGENT_VERSION = "1.7.0"
+AGENT_VERSION = "1.9.0"
 
 TIMEOUT_SECONDS = 130
 LOG_DIR = Path(__file__).parent / "logs"
@@ -334,6 +336,77 @@ def buy_credits(amount: float) -> dict:
     return _safe_json(resp)
 
 
+def assess_mcp(server_id: str, tools: list, server_version: str = "") -> dict:
+    """Assess an MCP server manifest for security posture.
+
+    Analyzes tools for dangerous capability patterns (filesystem write,
+    code execution, env access, network), detects drift from the previous
+    baseline, and tracks version changes.
+
+    Args:
+        server_id:      Stable identifier for this MCP server (e.g. "my-mcp-server").
+        tools:          List of tool dicts, each with at minimum a "name" field.
+                        Optional: "description", "inputSchema", "version".
+        server_version: Optional server version string (e.g. "1.2.0").
+
+    Returns:
+        dict with: assess_id, server_id, assessed_at, risk_score (0-100),
+                   findings, drift_detected, drift_summary, baseline_status.
+    """
+    if not _get_api_key():
+        return {"error": "TRUST_LAYER_API_KEY not set"}
+
+    body: dict = {
+        "server_id": server_id,
+        "manifest": {"tools": tools},
+    }
+    if server_version:
+        body["server_version"] = server_version
+
+    resp = requests.post(
+        f"{_get_base_url()}/v1/assess",
+        headers=_headers(),
+        json=body,
+        timeout=30,
+    )
+    if resp.status_code not in (200, 201):
+        return _error_result(resp)
+    return _safe_json(resp)
+
+
+def compliance_report(
+    date_from: str,
+    date_to: str,
+    framework: str = "eu_ai_act",
+) -> dict:
+    """Generate a compliance report for all proofs in a date range.
+
+    Aggregates proofs certified under the current API key and maps them to
+    the requested compliance framework's articles.
+
+    Args:
+        date_from: ISO 8601 start date (e.g. "2026-01-01" or "2026-01-01T00:00:00Z").
+        date_to:   ISO 8601 end date (e.g. "2026-12-31").
+        framework: Compliance framework name. Currently supported: "eu_ai_act".
+
+    Returns:
+        dict with: report_id, framework, framework_version, date_range,
+                   proof_count, articles, gaps, summary.
+    """
+    if not _get_api_key():
+        return {"error": "TRUST_LAYER_API_KEY not set"}
+
+    resp = requests.post(
+        f"{_get_base_url()}/v1/compliance-report",
+        headers=_headers(),
+        json={"framework": framework, "date_from": date_from, "date_to": date_to},
+        timeout=60,
+    )
+    if resp.status_code not in (200, 201):
+        return _error_result(resp)
+    return _safe_json(resp)
+
+
 # ---------------------------------------------------------------------------
 # Display helpers
 # ---------------------------------------------------------------------------
@@ -505,7 +578,7 @@ def _save_log(command: str, result: dict, extra: dict = None):
     if extra:
         log_entry.update(extra)
 
-    prefix = command if command in ("scan", "pay", "credits") else "pay"
+    prefix = command if command in ("scan", "pay", "credits", "assess", "compliance") else "pay"
     log_file = LOG_DIR / f"{prefix}_{now.strftime('%Y%m%d_%H%M%S')}.json"
     log_file.write_text(json.dumps(log_entry, indent=2, ensure_ascii=False))
     (LOG_DIR / "latest_transaction.json").write_text(json.dumps(log_entry, indent=2, ensure_ascii=False))
@@ -748,6 +821,239 @@ def _cmd_disputes():
 
 
 # ---------------------------------------------------------------------------
+# Demo manifest — used when --demo flag is passed to `assess`
+# ---------------------------------------------------------------------------
+
+_DEMO_TOOLS = [
+    {
+        "name": "get_weather",
+        "description": "Fetch current weather for a city via public API",
+    },
+    {
+        "name": "read_file",
+        "description": "Read any file from the local filesystem",
+    },
+    {
+        "name": "execute_command",
+        "description": "Execute a shell command on the host system",
+    },
+    {
+        "name": "send_email",
+        "description": "Send an email via the configured SMTP server",
+    },
+]
+
+
+def _print_assessment(result: dict):
+    """Print MCP security assessment results."""
+    risk = result.get("risk_score", 0)
+    if risk >= 70:
+        risk_label = "HIGH"
+    elif risk >= 40:
+        risk_label = "MEDIUM"
+    elif risk >= 10:
+        risk_label = "LOW"
+    else:
+        risk_label = "CLEAN"
+
+    _print_header(f"MCP SECURITY ASSESSMENT — {result.get('server_id', 'N/A')}")
+    print(f"  Assessment ID:  {result.get('assess_id', 'N/A')}")
+    print(f"  Assessed at:    {result.get('assessed_at', 'N/A')}")
+    print(f"  Risk score:     {risk}/100  [{risk_label}]")
+    print(f"  Baseline:       {result.get('baseline_status', 'N/A')}")
+    drift = result.get("drift_detected", False)
+    print(f"  Drift detected: {'YES' if drift else 'no'}")
+    if drift and result.get("drift_summary"):
+        print(f"  Drift summary:  {result['drift_summary']}")
+    print()
+
+    findings = result.get("findings", [])
+    if findings:
+        # Group by severity
+        by_severity: dict[str, list] = {}
+        for f in findings:
+            sev = f.get("severity", "info")
+            by_severity.setdefault(sev, []).append(f)
+
+        order = ["critical", "high", "medium", "low", "info"]
+        labels = {"critical": "CRITICAL", "high": "HIGH", "medium": "MEDIUM",
+                  "low": "LOW", "info": "INFO"}
+        print(f"  Findings ({len(findings)} total):")
+        for sev in order:
+            for f in by_severity.get(sev, []):
+                tool = f.get("tool", "")
+                msg = f.get("message", "")
+                label = labels.get(sev, sev.upper())
+                prefix = f"    [{label}]"
+                if tool:
+                    print(f"{prefix} {tool}: {msg}")
+                else:
+                    print(f"{prefix} {msg}")
+    else:
+        print("  Findings:       none")
+    print("=" * 60)
+
+
+def _print_compliance_report(result: dict):
+    """Print EU AI Act compliance report."""
+    summary = result.get("summary", {})
+    covered = summary.get("covered", 0)
+    partial = summary.get("partial", 0)
+    gap = summary.get("gap", 0)
+    na = summary.get("not_applicable", 0)
+    total_articles = covered + partial + gap + na
+
+    dr = result.get("date_range", {})
+
+    _print_header(f"COMPLIANCE REPORT — {result.get('framework', 'N/A').upper()}")
+    print(f"  Report ID:      {result.get('report_id', 'N/A')}")
+    print(f"  Framework:      {result.get('framework', 'N/A')} v{result.get('framework_version', '?')}")
+    print(f"  Date range:     {dr.get('from', '?')[:10]} → {dr.get('to', '?')[:10]}")
+    print(f"  Proofs analyzed:{result.get('proof_count', 0)}")
+    if result.get("coverage_since"):
+        print(f"  Coverage since: {result['coverage_since']}")
+    print()
+    print(f"  Summary ({total_articles} articles):")
+    print(f"    Covered:        {covered}")
+    print(f"    Partial:        {partial}")
+    print(f"    Gap:            {gap}")
+    print(f"    Not applicable: {na}")
+    print()
+
+    articles = result.get("articles", [])
+    if articles:
+        status_icons = {
+            "covered": "OK",
+            "partial": "~~",
+            "gap": "!!",
+            "not_applicable": "NA",
+        }
+        print("  Article coverage:")
+        for a in articles:
+            icon = status_icons.get(a.get("status", ""), "  ")
+            art = a.get("article", "N/A")
+            title = a.get("title", "")
+            status = a.get("status", "").replace("_", " ")
+            print(f"    [{icon}] {art} — {title}: {status}")
+            evidence = a.get("evidence", "")
+            if evidence and a.get("status") not in ("covered",):
+                print(f"         {evidence}")
+        print()
+
+    gaps = result.get("gaps", [])
+    if gaps:
+        print(f"  Gaps to address ({len(gaps)}):")
+        for g in gaps:
+            print(f"    - {g}")
+    else:
+        print("  No gaps identified.")
+    print("=" * 60)
+
+
+def _cmd_assess():
+    _require_arg(2, "Usage: python3 agent.py assess <server_id> [--tools-file manifest.json] "
+                    "[--version 1.0.0] [--demo]")
+    server_id = sys.argv[2]
+    args = sys.argv[3:]
+
+    # --demo: use built-in example manifest
+    if "--demo" in args:
+        tools = _DEMO_TOOLS
+        print(f"[DEMO] Using built-in manifest with {len(tools)} tools "
+              f"(including dangerous patterns for testing)")
+    else:
+        # --tools-file path/to/manifest.json
+        tools_file = None
+        for i, arg in enumerate(args):
+            if arg == "--tools-file" and i + 1 < len(args):
+                tools_file = args[i + 1]
+            elif arg.startswith("--tools-file="):
+                tools_file = arg.split("=", 1)[1]
+
+        if tools_file:
+            try:
+                raw = json.loads(Path(tools_file).read_text())
+                # Accept { "tools": [...] } or a bare list
+                tools = raw.get("tools", raw) if isinstance(raw, dict) else raw
+                if not isinstance(tools, list):
+                    print(f"[FAILED] {tools_file}: expected a list or {{\"tools\": [...]}} object")
+                    sys.exit(1)
+            except (OSError, json.JSONDecodeError) as e:
+                print(f"[FAILED] Cannot read {tools_file}: {e}")
+                sys.exit(1)
+        else:
+            print("[FAILED] Provide either --tools-file manifest.json or --demo")
+            print("  Example: python3 agent.py assess my-server --demo")
+            print("  Example: python3 agent.py assess my-server --tools-file tools.json")
+            sys.exit(1)
+
+    # --version
+    server_version = ""
+    for i, arg in enumerate(args):
+        if arg == "--version" and i + 1 < len(args):
+            server_version = args[i + 1]
+        elif arg.startswith("--version="):
+            server_version = arg.split("=", 1)[1]
+
+    ts = datetime.now(timezone.utc).isoformat()
+    _print_header(f"MCP SECURITY ASSESSMENT — {server_id}")
+    print(f"Timestamp:     {ts}")
+    print(f"Trust Layer:   {_get_base_url()}/v1/assess")
+    _print_key_info()
+    print(f"Tools:         {len(tools)}")
+    if server_version:
+        print(f"Version:       {server_version}")
+    print()
+
+    result = assess_mcp(server_id, tools, server_version=server_version)
+    _print_error(result)
+    _print_assessment(result)
+    _save_log("assess", result, {"server_id": server_id})
+
+
+def _cmd_compliance():
+    args = sys.argv[2:]
+
+    # --from / --to / --framework
+    now = datetime.now(timezone.utc)
+    default_from = (now - timedelta(days=30)).strftime("%Y-%m-%d")
+    default_to = now.strftime("%Y-%m-%d")
+
+    date_from = default_from
+    date_to = default_to
+    framework = "eu_ai_act"
+
+    for i, arg in enumerate(args):
+        if arg in ("--from", "--date-from") and i + 1 < len(args):
+            date_from = args[i + 1]
+        elif arg.startswith("--from="):
+            date_from = arg.split("=", 1)[1]
+        elif arg in ("--to", "--date-to") and i + 1 < len(args):
+            date_to = args[i + 1]
+        elif arg.startswith("--to="):
+            date_to = arg.split("=", 1)[1]
+        elif arg == "--framework" and i + 1 < len(args):
+            framework = args[i + 1]
+        elif arg.startswith("--framework="):
+            framework = arg.split("=", 1)[1]
+
+    ts = datetime.now(timezone.utc).isoformat()
+    _print_header(f"COMPLIANCE REPORT — {framework.upper()}")
+    print(f"Timestamp:     {ts}")
+    print(f"Trust Layer:   {_get_base_url()}/v1/compliance-report")
+    _print_key_info()
+    print(f"Framework:     {framework}")
+    print(f"Date range:    {date_from} → {date_to}")
+    print()
+
+    result = compliance_report(date_from, date_to, framework=framework)
+    _print_error(result)
+    _print_compliance_report(result)
+    _save_log("compliance", result, {"framework": framework, "date_from": date_from,
+                                     "date_to": date_to})
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -759,19 +1065,25 @@ COMMANDS = {
     "reputation": lambda receipt_url: _cmd_reputation(),
     "dispute": lambda receipt_url: _cmd_dispute(),
     "disputes": lambda receipt_url: _cmd_disputes(),
+    "assess": lambda receipt_url: _cmd_assess(),
+    "compliance": lambda receipt_url: _cmd_compliance(),
 }
 
 
 def main():
     if len(sys.argv) < 2:
         print("Usage:")
-        print("  python3 agent.py scan <repo_url>       # Scan repo (0.10 EUR)")
-        print("  python3 agent.py pay                    # Payment proof (0.10 EUR)")
-        print("  python3 agent.py credits <amount_eur>   # Buy credits (1-100 EUR)")
-        print("  python3 agent.py verify <proof_id>      # Verify a proof")
-        print("  python3 agent.py reputation <agent_id>  # Check agent reputation (0-100)")
-        print("  python3 agent.py dispute <proof_id> \"reason\"  # File a dispute")
-        print("  python3 agent.py disputes <agent_id>    # View dispute history")
+        print("  python3 agent.py scan <repo_url>            # Scan repo (0.10 EUR/proof)")
+        print("  python3 agent.py pay                         # Payment proof only (0.10 EUR)")
+        print("  python3 agent.py credits <amount_eur>        # Buy credits (1-100 EUR)")
+        print("  python3 agent.py verify <proof_id>           # Verify a proof")
+        print("  python3 agent.py reputation <agent_id>       # Check agent reputation (0-100)")
+        print("  python3 agent.py dispute <proof_id> \"reason\" # File a dispute")
+        print("  python3 agent.py disputes <agent_id>         # View dispute history")
+        print("  python3 agent.py assess <server_id> --demo   # Assess MCP server (demo manifest)")
+        print("  python3 agent.py assess <server_id> --tools-file manifest.json [--version 1.0.0]")
+        print("  python3 agent.py compliance                  # EU AI Act report (last 30 days)")
+        print("  python3 agent.py compliance --from 2026-01-01 --to 2026-12-31 [--framework eu_ai_act]")
         print()
         print("Mode B — payment evidence:")
         print("  --receipt-url URL   Direct provider payment receipt (manual)")

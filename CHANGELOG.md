@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.9.0] - 2026-04-03
+
+### Added
+- `assess <server_id>` command — MCP server security posture assessment.
+  Analyzes a manifest for dangerous capability patterns (`PermissionAnalyzer`:
+  filesystem write, code execution, env access, network), tool drift since the
+  last baseline (`DescriptionDriftAnalyzer`), and version regressions
+  (`VersionTrackingAnalyzer`). Returns a `risk_score` (0–100) with categorized
+  findings. `--demo` flag uses a built-in manifest for quick testing.
+  `--tools-file manifest.json` reads tools from a JSON file.
+  `--version 1.0.0` tracks server version changes. Rate limit: 100/day, no credits.
+- `compliance` command — EU AI Act compliance report.
+  Aggregates all proofs for the current API key over a date range and maps
+  them to 6 EU AI Act articles (Art. 9, 10, 13, 14, 17, 22).
+  Returns per-article coverage status and a gaps list.
+  `--from` / `--to` flags control the date range (defaults: last 30 days).
+  `--framework` selects the framework (default: `eu_ai_act`). No credits consumed.
+- `assess_mcp(server_id, tools, server_version)` library function.
+- `compliance_report(date_from, date_to, framework)` library function.
+- `_print_assessment()` and `_print_compliance_report()` display helpers.
+- `_DEMO_TOOLS` built-in manifest (4 tools including dangerous patterns).
+
+### Changed
+- `AGENT_VERSION` bumped to `1.9.0`.
+- `_save_log()` now saves `assess` and `compliance` prefixed log files.
+- Module docstring updated to list all 9 commands.
+- Architecture section in README updated (7 → 9 commands).
+
 ## [1.8.1] - 2026-03-16
 
 ### Changed (no code change — Trust Layer v1.3.0 API update)
