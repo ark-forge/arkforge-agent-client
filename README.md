@@ -252,22 +252,23 @@ COMPLIANCE REPORT — EU_AI_ACT
   Framework:      eu_ai_act v1.0
   Date range:     2026-01-01 → 2026-04-03
   Proofs analyzed:47
+  Coverage since: indexed
 
   Summary (6 articles):
-    Covered:        3
-    Partial:        2
+    Covered:        4
+    Partial:        1
     Gap:            0
     Not applicable: 1
 
   Article coverage:
-    [OK] Art. 9 — Risk Management Systems: covered
+    [OK] Art. 9 — Risk Management System: covered
     [NA] Art. 10 — Data and Data Governance: not applicable
+         Organisational obligation — not verifiable from transaction proofs
     [OK] Art. 13 — Transparency and Provision of Information: covered
     [~~] Art. 14 — Human Oversight: partial
-         agent_identity_verified not set on all proofs
+         Human-controlled API key used (buyer_fingerprint present); agent not DID-verified
     [OK] Art. 17 — Quality Management System: covered
-    [~~] Art. 22 — Record-Keeping: partial
-         47 proofs found; extend date range for full coverage
+    [OK] Art. 22 — Record-keeping: covered
 
   No gaps identified.
 ============================================================
