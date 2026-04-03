@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.9.3] - 2026-04-03
+
+### Changed
+- `README.md` — compliance section updated for all 4 frameworks (eu_ai_act, iso_42001,
+  nist_ai_rmf, soc2_readiness): framework table, CLI examples for each, NIST AI RMF
+  example output, SOC 2 audit disclaimer, commands table, library usage examples.
+
+---
+
 ## [1.9.2] - 2026-04-03
 
 ### Added

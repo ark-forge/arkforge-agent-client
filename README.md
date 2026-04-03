@@ -232,17 +232,29 @@ Rate limit: 100 assessments/day per API key. No credits consumed.
 
 ### 10. Generate a compliance report
 
-Aggregate all proofs certified under your API key over a date range and map them to EU AI Act articles.
+Aggregate all proofs certified under your API key over a date range and map them to a compliance framework. Four frameworks are supported:
+
+| Framework | `--framework` value | Scope |
+|-----------|---------------------|-------|
+| EU AI Act (Regulation 2024/1689) | `eu_ai_act` *(default)* | Articles 9, 10, 13, 14, 17, 22 |
+| ISO/IEC 42001:2023 | `iso_42001` | Clauses 6.1, 8.2, 8.4, 9.1, 9.2, 10.1 |
+| NIST AI RMF 1.0 | `nist_ai_rmf` | GOVERN 1.1, MAP 1.1/5.2, MEASURE 1.1/2.5, MANAGE 1.3/4.1 |
+| SOC 2 Readiness | `soc2_readiness` | CC6.1, CC6.7, CC7.2, PI1.1, PI1.2, A1.1 |
+
+> **SOC 2 note:** `soc2_readiness` produces readiness evidence, not a formal SOC 2 audit opinion. A SOC 2 Type II report requires an independent CPA firm accredited by the AICPA.
 
 ```bash
-# Last 30 days (default)
+# Last 30 days, EU AI Act (default)
 python3 agent.py compliance
 
-# Custom range
-python3 agent.py compliance --from 2026-01-01 --to 2026-12-31
+# Custom range, specific framework
+python3 agent.py compliance --from 2026-01-01 --to 2026-12-31 --framework eu_ai_act
+python3 agent.py compliance --from 2026-01-01 --to 2026-12-31 --framework iso_42001
+python3 agent.py compliance --from 2026-01-01 --to 2026-12-31 --framework nist_ai_rmf
+python3 agent.py compliance --from 2026-01-01 --to 2026-12-31 --framework soc2_readiness
 ```
 
-**Example output:**
+**Example output (eu_ai_act):**
 
 ```
 ============================================================
@@ -254,7 +266,7 @@ COMPLIANCE REPORT — EU_AI_ACT
   Proofs analyzed:47
   Coverage since: indexed
 
-  Summary (6 articles):
+  Summary (6 clauses/articles):
     Covered:        4
     Partial:        1
     Gap:            0
@@ -271,6 +283,30 @@ COMPLIANCE REPORT — EU_AI_ACT
     [OK] Art. 22 — Record-keeping: covered
 
   No gaps identified.
+============================================================
+```
+
+**Example output (nist_ai_rmf):**
+
+```
+============================================================
+COMPLIANCE REPORT — NIST_AI_RMF
+============================================================
+  Framework:      nist_ai_rmf v1.0
+  Summary (7 clauses/articles):
+    Covered:        5
+    Partial:        1
+    Gap:            0
+    Not applicable: 1
+
+  Article coverage:
+    [NA] GOVERN 1.1 — AI Risk Policies and Procedures: not applicable
+    [OK] MAP 1.1 — AI System Context Established: covered
+    [OK] MAP 5.2 — AI Risk Tracking Practices: covered
+    [~~] MEASURE 1.1 — Risk Measurement Methods: partial
+    [OK] MEASURE 2.5 — AI System Performance Monitored: covered
+    [OK] MANAGE 1.3 — Risk Treatment Documented: covered
+    [OK] MANAGE 4.1 — Risk Monitoring Established: covered
 ============================================================
 ```
 
@@ -363,6 +399,12 @@ from agent import (
     scan_repo, verify_proof, get_reputation, file_dispute, get_disputes,
     assess_mcp, compliance_report,
 )
+
+# Compliance report — choose any framework
+report = compliance_report("2026-01-01", "2026-03-31", framework="nist_ai_rmf")
+report = compliance_report("2026-01-01", "2026-03-31", framework="soc2_readiness")
+report = compliance_report("2026-01-01", "2026-03-31", framework="iso_42001")
+report = compliance_report("2026-01-01", "2026-03-31")  # defaults to eu_ai_act
 
 # All functions return dicts — check for "error" key on failure
 result = scan_repo("https://github.com/owner/repo")
@@ -485,8 +527,8 @@ Both this agent (buyer) and the ArkForge scan API (seller) are built and control
 | `python3 agent.py assess <server_id> --demo` | Assess MCP server security posture (built-in demo manifest) |
 | `python3 agent.py assess <server_id> --tools-file f.json` | Assess MCP server from manifest file |
 | `python3 agent.py assess <server_id> --server-url URL [--version V]` | Fetch manifest from remote server, then assess |
-| `python3 agent.py compliance` | EU AI Act compliance report (last 30 days) |
-| `python3 agent.py compliance --from DATE --to DATE` | Compliance report for a custom date range |
+| `python3 agent.py compliance` | Compliance report — EU AI Act, last 30 days (default) |
+| `python3 agent.py compliance --from DATE --to DATE [--framework F]` | Compliance report — custom range and framework (`eu_ai_act`, `iso_42001`, `nist_ai_rmf`, `soc2_readiness`) |
 
 ## Plans
 
@@ -517,7 +559,7 @@ Both this agent (buyer) and the ArkForge scan API (seller) are built and control
 
 ```
 arkforge-agent-client/
-  agent.py               # CLI + importable library (9 commands)
+  agent.py               # CLI + importable library (10 commands)
   setup_card.py          # One-time: buy initial credits + save card via Stripe Checkout
   requirements.txt       # requests + stripe (optional for --pay-provider)
   .last_receipt.json     # Auto-saved Stripe receipt URL (gitignored)
