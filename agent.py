@@ -950,6 +950,58 @@ def _print_compliance_report(result: dict):
     print("=" * 60)
 
 
+def _fetch_tools_from_server(server_url: str) -> list:
+    """Fetch tools list from a remote MCP server.
+
+    Tries the following paths in order until one returns a tools list:
+    1. GET {server_url}/manifest.json        → reads .tools field
+    2. GET {server_url}/tools                → reads .tools or bare list
+    3. POST {server_url} (MCP JSON-RPC)      → tools/list method
+
+    Exits with an error message if none succeed.
+    """
+    candidates = [
+        ("GET", f"{server_url}/manifest.json"),
+        ("GET", f"{server_url}/tools"),
+        ("GET", f"{server_url}/v1/tools"),
+    ]
+
+    for method, url in candidates:
+        try:
+            resp = requests.get(url, timeout=10)
+            if resp.status_code == 200:
+                raw = resp.json()
+                # { "tools": [...] } or bare list
+                tools = raw.get("tools", raw) if isinstance(raw, dict) else raw
+                if isinstance(tools, list) and tools:
+                    print(f"[SERVER] Fetched {len(tools)} tools from {url}")
+                    return tools
+        except Exception:
+            continue
+
+    # Try MCP JSON-RPC tools/list
+    try:
+        resp = requests.post(
+            server_url,
+            json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
+            headers={"Content-Type": "application/json"},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            tools = data.get("result", {}).get("tools", [])
+            if isinstance(tools, list) and tools:
+                print(f"[SERVER] Fetched {len(tools)} tools via MCP JSON-RPC from {server_url}")
+                return tools
+    except Exception:
+        pass
+
+    print(f"[FAILED] Could not fetch tools from {server_url}")
+    print(f"  Tried: {server_url}/manifest.json, /tools, /v1/tools, MCP JSON-RPC")
+    print(f"  Make sure the server is running and accessible.")
+    sys.exit(1)
+
+
 def _cmd_assess():
     _require_arg(2, "Usage: python3 agent.py assess <server_id> [--tools-file manifest.json] "
                     "[--version 1.0.0] [--demo]")
@@ -962,6 +1014,14 @@ def _cmd_assess():
         print(f"[DEMO] Using built-in manifest with {len(tools)} tools "
               f"(including dangerous patterns for testing)")
     else:
+        # --server-url https://mcp.example.com  — fetch manifest from remote server
+        server_url = None
+        for i, arg in enumerate(args):
+            if arg == "--server-url" and i + 1 < len(args):
+                server_url = args[i + 1].rstrip("/")
+            elif arg.startswith("--server-url="):
+                server_url = arg.split("=", 1)[1].rstrip("/")
+
         # --tools-file path/to/manifest.json
         tools_file = None
         for i, arg in enumerate(args):
@@ -970,7 +1030,9 @@ def _cmd_assess():
             elif arg.startswith("--tools-file="):
                 tools_file = arg.split("=", 1)[1]
 
-        if tools_file:
+        if server_url:
+            tools = _fetch_tools_from_server(server_url)
+        elif tools_file:
             try:
                 raw = json.loads(Path(tools_file).read_text())
                 # Accept { "tools": [...] } or a bare list
@@ -982,9 +1044,10 @@ def _cmd_assess():
                 print(f"[FAILED] Cannot read {tools_file}: {e}")
                 sys.exit(1)
         else:
-            print("[FAILED] Provide either --tools-file manifest.json or --demo")
-            print("  Example: python3 agent.py assess my-server --demo")
+            print("[FAILED] Provide one of: --server-url URL, --tools-file manifest.json, --demo")
+            print("  Example: python3 agent.py assess my-server --server-url https://mcp.example.com")
             print("  Example: python3 agent.py assess my-server --tools-file tools.json")
+            print("  Example: python3 agent.py assess my-server --demo")
             sys.exit(1)
 
     # --version
@@ -1000,6 +1063,8 @@ def _cmd_assess():
     print(f"Timestamp:     {ts}")
     print(f"Trust Layer:   {_get_base_url()}/v1/assess")
     _print_key_info()
+    if server_url:
+        print(f"Server URL:    {server_url}")
     print(f"Tools:         {len(tools)}")
     if server_version:
         print(f"Version:       {server_version}")
@@ -1080,8 +1145,9 @@ def main():
         print("  python3 agent.py reputation <agent_id>       # Check agent reputation (0-100)")
         print("  python3 agent.py dispute <proof_id> \"reason\" # File a dispute")
         print("  python3 agent.py disputes <agent_id>         # View dispute history")
-        print("  python3 agent.py assess <server_id> --demo   # Assess MCP server (demo manifest)")
+        print("  python3 agent.py assess <server_id> --server-url https://mcp.example.com [--version 1.0.0]")
         print("  python3 agent.py assess <server_id> --tools-file manifest.json [--version 1.0.0]")
+        print("  python3 agent.py assess <server_id> --demo   # Assess MCP server (demo manifest)")
         print("  python3 agent.py compliance                  # EU AI Act report (last 30 days)")
         print("  python3 agent.py compliance --from 2026-01-01 --to 2026-12-31 [--framework eu_ai_act]")
         print()

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.1] - 2026-04-03
+
+### Added
+- `assess --server-url https://mcp.example.com` — fetch tools list from a remote MCP server
+  before calling `/v1/assess`. Tries in order: `GET /manifest.json`, `GET /tools`,
+  `GET /v1/tools`, MCP JSON-RPC `tools/list`. Useful when the client runs on a different
+  machine than the server.
+
 ## [1.9.0] - 2026-04-03
 
 ### Added
