@@ -37,7 +37,7 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://arkforge.tech"
+Homepage = "https://arkforge.tech?utm_source=pypi&utm_medium=package&utm_campaign=agent_client"
 Documentation = "https://trust.arkforge.tech"
 Repository = "https://github.com/ark-forge/arkforge-agent-client"
 "Bug Tracker" = "https://github.com/ark-forge/arkforge-agent-client/issues"
